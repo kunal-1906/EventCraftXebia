@@ -1,117 +1,109 @@
-# EventCraft - Event Management Platform
+# EventCraft
 
-A modern event management web application built with React that allows users to create, manage, and attend events. The platform supports multiple user roles with role-specific dashboards and features.
+EventCraft is a comprehensive event management platform that allows users to create, discover, and register for events. The application is built with a React frontend and Node.js/Express backend.
 
 ## Features
 
-### Authentication System
-- Secure JWT-based authentication
-- Role-based access control (Attendee, Organizer, Admin)
-- User registration with role selection
-- Login with appropriate redirects
-- Protected routes based on user roles
-
-### User Roles & Dashboards
-
-#### Attendee
-- View and register for upcoming events
-- Track registered events
-- Access to personalized calendar view
-- Submit feedback for attended events
-- View event certificates and details
-
-#### Organizer
-- Create and manage events
-- Track event statistics and attendance
-- Manage event vendors
-- Handle sponsorship and speaker requests
-- View revenue and analytics
-
-#### Admin
-- Moderate events and content
-- Manage all users
-- Handle reports and feedback
-- View platform-wide statistics
-- Approve/reject pending events
-
-### UI Components
-- Modern, responsive design with Tailwind CSS
-- Role-specific dashboards
-- Interactive event cards
-- Notification system
-- Tabbed interfaces for data organization
+- Auth0 Authentication
+- User roles (Attendee, Organizer, Admin)
+- Event creation and management
+- Ticket purchasing and management
+- User profiles
+- Admin dashboard
 
 ## Tech Stack
 
-- **Frontend**: React, React Router
-- **State Management**: Redux with Redux Toolkit
-- **Styling**: Tailwind CSS
-- **Authentication**: JWT tokens
-- **Build Tool**: Vite
+### Frontend
+- React
+- Redux Toolkit
+- React Router
+- Tailwind CSS
+- Framer Motion
+- Auth0
+
+### Backend
+- Node.js
+- Express
+- MongoDB
+- JWT Authentication
+- Auth0 Integration
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v14 or higher)
-- npm or yarn
+
+- Node.js (v14+)
+- MongoDB (local or Atlas)
+- Auth0 account
 
 ### Installation
 
 1. Clone the repository
-```bash
-git clone <repository-url>
-cd eventcraft
-```
+   ```
+   git clone https://github.com/yourusername/eventcraft.git
+   cd eventcraft
+   ```
 
-2. Install dependencies
-```bash
-npm install
-# or
-yarn
-```
+2. Install backend dependencies
+   ```
+   cd backend
+   npm install
+   ```
 
-3. Start the development server
-```bash
-npm run dev
-# or
-yarn dev
-```
+3. Install frontend dependencies
+   ```
+   cd ../frontend
+   npm install
+   ```
 
-4. Open your browser and navigate to `http://localhost:5173`
+4. Set up environment variables
+   - Create a `.env` file in the backend directory based on `.env.example`
+   - Create a `.env` file in the frontend directory based on `.env.example`
 
-### Demo Accounts
+5. Set up Auth0 (see AUTH0_SETUP.md for detailed instructions)
 
-Use these credentials to test different user roles:
+6. Start the development servers
 
-- **Attendee**: john@example.com / password123
-- **Organizer**: jane@example.com / password123
-- **Admin**: admin@example.com / password123
+   Backend:
+   ```
+   cd backend
+   npm run dev
+   ```
+
+   Frontend:
+   ```
+   cd frontend
+   npm run dev
+   ```
+
+7. Open your browser and navigate to `http://localhost:5173`
+
+## Auth0 Setup
+
+See the [AUTH0_SETUP.md](AUTH0_SETUP.md) file for detailed instructions on setting up Auth0 authentication.
 
 ## Project Structure
 
 ```
-src/
-├── assets/          # Static assets
-├── components/      # Reusable UI components
-├── pages/           # Page components
-│   ├── admin/       # Admin-specific pages
-│   ├── attendee/    # Attendee-specific pages
-│   └── organizer/   # Organizer-specific pages
-├── redux/           # Redux state management
-├── services/        # API services
-├── App.jsx          # Main application component
-└── main.jsx         # Application entry point
+eventcraft/
+├── backend/             # Express server
+│   ├── config/          # Database configuration
+│   ├── controllers/     # Route controllers
+│   ├── middleware/      # Custom middleware
+│   ├── models/          # Mongoose models
+│   ├── routes/          # API routes
+│   └── server.js        # Server entry point
+├── frontend/            # React application
+│   ├── public/          # Static files
+│   └── src/             # Source files
+│       ├── components/  # React components
+│       ├── hooks/       # Custom hooks
+│       ├── pages/       # Page components
+│       ├── redux/       # Redux store and slices
+│       └── services/    # API services
+└── README.md            # Project documentation
 ```
-
-## Future Enhancements
-
-- Real-time notifications with WebSockets
-- Payment gateway integration
-- Event analytics dashboard
-- Mobile application
-- Email notifications
-- Social media integration
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
