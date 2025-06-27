@@ -1,37 +1,65 @@
 // Dummy company information for chabot
 export const companyInfo = `
-Introduction:
-I'm your friendly Aroma Beans Coffee chatbot, here to assist you with anything you need related to our coffee shop! Whether you're looking for information about our menu, business hours, or brewing tips, I'm here to help.
-Details:
-Aroma Beans Coffee is your ultimate destination for the finest coffee experience. We specialize in bringing premium coffee blends from across the globe, carefully curated to satisfy even the most discerning coffee enthusiasts. Whether you're a fan of single-origin beans or enjoy exploring bold, unique blends, Aroma Beans Coffee promises to elevate your coffee moments.
-Located in the heart of Brew City, California, our café and roastery provide a cozy, welcoming atmosphere for coffee lovers to relax, work, or connect. Visit us at 123 Coffee Lane, Brew City, CA 90210. We're open Monday to Friday from 7:00 AM to 9:00 PM and on weekends from 8:00 AM to 10:00 PM.
-Stay connected with us through our vibrant social media community. Follow us for updates, brewing tips, and special promotions on:
-- Facebook: https://facebook.com/aromabeanscoffee
-- Instagram: https://instagram.com/aromabeanscoffee
-- Twitter: https://twitter.com/aromabeansco
-- LinkedIn: https://linkedin.com/company/aromabeanscoffee
-For inquiries, feel free to reach out via email at hello@aromabeanscoffee.com or call us at +1 (555) 123-4567.
-Our website, https://www.aromabeanscoffee.com, offers a seamless shopping experience for coffee beans, accessories, and subscriptions. Learn about our unique blends, explore brewing guides, and subscribe to receive fresh coffee delivered to your doorstep.
-Menu:
-- Signature Coffee:
-  - Espresso Shot - $3.50
-  - Cappuccino - $4.00
-  - Latte (Classic/Vanilla/Caramel) - $4.50
-  - Mocha - $5.00
-- Specialty Brews:
-  - Cold Brew - $4.50
-  - Nitro Cold Brew - $5.50
-  - Single-Origin Pour Over - $5.00
-- Seasonal Favorites:
-  - Pumpkin Spice Latte - $5.50
-  - Peppermint Mocha - $5.50
-- Tea & Alternatives:
-  - Matcha Latte - $5.00
-  - Chai Latte - $4.50
-  - Hot Chocolate - $4.00
-- Snacks & Pastries:
-  - Croissant (Butter/Almond) - $3.50
-  - Muffins (Blueberry/Chocolate Chip) - $3.00
-  - Avocado Toast - $6.00
-  - Bagel with Cream Cheese - $4.00
-At Aroma Beans Coffee, we believe in creating moments worth savoring. Whether you're stopping by for your morning pick-me-up or indulging in an afternoon treat, we've got something special for everyone.`;
+Introduction
+Welcome to EventCraft  your dedicated platform for seamless event planning and management. Whether you're organizing a seminar, a concert, a wedding, or a community gathering, EventNest makes the entire process easy and efficient.
+
+About Us
+EventCraft is built to connect event organizers, vendors, venues, and attendees on a single platform. We offer a streamlined experience to plan, manage, promote, and analyze events of all sizes. Whether it's a small workshop or a large public festival, EventNest helps bring your event to life.
+
+We are headquartered in Event City, California. Our platform is powered by a team of experienced professionals passionate about simplifying the event journey.
+
+Address: 123 Celebration Avenue, Event City, CA 90210
+Office Hours:
+
+Monday to Friday: 9:00 AM  7:00 PM
+
+Saturday and Sunday: 10:00 AM  6:00 PM
+
+Stay Connected
+Follow us for tips, feature updates, and news:
+
+Facebook: facebook.com/eventcraft
+
+Instagram: instagram.com/eventcraft
+
+Twitter: twitter.com/eventcrafthq
+
+LinkedIn: linkedin.com/company/eventcraft
+
+Email: support@eventcraft.com
+Phone: +1 (555) 987-6543
+Website: www.eventcraft.com
+
+Features for Organizers
+Create and publish events
+
+Manage RSVPs and ticketing
+
+Access venue and vendor directories
+
+Promote events with built-in marketing tools
+
+Monitor engagement through real-time analytics
+
+Receive admin approval and verification support
+
+Benefits for Attendees
+Browse and discover verified events
+
+Book tickets with secure checkout
+
+Get personalized event suggestions
+
+Receive calendar reminders and notifications
+
+Share feedback post-event
+
+Pricing Plans for Organizers
+Basic (Free): Event listing, RSVP management
+
+Pro ($49/month): Ticket sales, email campaigns, analytics
+
+Premium ($99/month): Full branding tools, vendor integration, priority support
+
+Our Belief
+At EventCraft, we believe every event has the potential to create meaningful experiences. Whether you're hosting a community event or a major conference, we're here to support your vision every step of the way.`;
