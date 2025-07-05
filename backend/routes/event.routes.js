@@ -3,10 +3,9 @@ const router = express.Router();
 const { checkJwt, checkUser, authorize } = require('../middleware/auth');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const User = require('../models/User');
 const emailService = require('../services/emailService');
 const smsService = require('../services/smsService');
-// We'll implement the controller later
-// const eventController = require('../controllers/event.controller');
 
 // Public event routes
 router.get('/', async (req, res) => {
@@ -62,302 +61,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.id)
-      .populate('organizer', 'name email')
-      .populate('attendees.user', 'name email');
-    
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    res.json(event);
-  } catch (error) {
-    console.error('Error fetching event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-router.get('/search', (req, res) => {
-  // Placeholder until we implement the controller
-  res.status(200).json({ message: 'Search events endpoint' });
-});
-
-// Organizer event routes
-router.post('/', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      date,
-      endDate,
-      location,
-      isVirtual,
-      virtualLink,
-      capacity,
-      ticketPrice,
-      category,
-      tags,
-      ticketTypes,
-      image
-    } = req.body;
-
-    // Validation
-    if (!title || !description || !date || !location || !category) {
-      return res.status(400).json({ 
-        message: 'Missing required fields: title, description, date, location, category' 
-      });
-    }
-
-    if (new Date(date) <= new Date()) {
-      return res.status(400).json({ 
-        message: 'Event date must be in the future' 
-      });
-    }
-
-    if (endDate && new Date(endDate) <= new Date(date)) {
-      return res.status(400).json({ 
-        message: 'End date must be after start date' 
-      });
-    }
-
-    // Create new event
-    const event = new Event({
-      title,
-      description,
-      date,
-      endDate,
-      location,
-      isVirtual: isVirtual || false,
-      virtualLink,
-      capacity: capacity || 100,
-      ticketPrice: ticketPrice || 0,
-      category,
-      tags: tags || [],
-      ticketTypes: ticketTypes || [{
-        name: 'General Admission',
-        price: ticketPrice || 0,
-        description: 'Standard event admission',
-        quantity: capacity || 100,
-        quantitySold: 0
-      }],
-      image: image || '',
-      organizer: req.dbUser._id,
-      // Admin can directly publish, organizers need approval
-      status: req.dbUser.role === 'admin' ? 'published' : 'pending_approval',
-      approvalStatus: req.dbUser.role === 'admin' ? 'approved' : 'pending',
-      submittedForApproval: req.dbUser.role === 'organizer',
-      submittedAt: req.dbUser.role === 'organizer' ? new Date() : undefined,
-      approvedBy: req.dbUser.role === 'admin' ? req.dbUser._id : undefined,
-      approvedAt: req.dbUser.role === 'admin' ? new Date() : undefined
-    });
-
-    await event.save();
-    
-    // Populate organizer info for response
-    await event.populate('organizer', 'name email');
-
-    const responseMessage = req.dbUser.role === 'admin' 
-      ? 'Event created and published successfully!'
-      : 'Event created and submitted for admin approval!';
-
-    res.status(201).json({
-      message: responseMessage,
-      event
-    });
-  } catch (error) {
-    console.error('Error creating event:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: 'Validation error', 
-        errors: Object.values(error.errors).map(e => e.message)
-      });
-    }
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-router.put('/:id', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const eventId = req.params.id;
-    const updateData = req.body;
-
-    // Find the event
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-
-    // Check if user is the organizer or admin
-    if (req.dbUser.role !== 'admin' && event.organizer.toString() !== req.dbUser._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to update this event' });
-    }
-
-    // Update validation
-    if (updateData.date && new Date(updateData.date) <= new Date()) {
-      return res.status(400).json({ message: 'Event date must be in the future' });
-    }
-
-    if (updateData.endDate && updateData.date && new Date(updateData.endDate) <= new Date(updateData.date)) {
-      return res.status(400).json({ message: 'End date must be after start date' });
-    }
-
-    // Update the event
-    const updatedEvent = await Event.findByIdAndUpdate(
-      eventId,
-      { ...updateData, updatedAt: new Date() },
-      { new: true, runValidators: true }
-    ).populate('organizer', 'name email');
-
-    res.json({
-      message: 'Event updated successfully',
-      event: updatedEvent
-    });
-  } catch (error) {
-    console.error('Error updating event:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: 'Validation error', 
-        errors: Object.values(error.errors).map(e => e.message)
-      });
-    }
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-router.delete('/:id', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const eventId = req.params.id;
-
-    // Find the event
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-
-    // Check if user is the organizer or admin
-    if (req.dbUser.role !== 'admin' && event.organizer.toString() !== req.dbUser._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to delete this event' });
-    }
-
-    // Check if event has attendees
-    if (event.attendees.length > 0) {
-      return res.status(400).json({ 
-        message: 'Cannot delete event with registered attendees. Cancel the event instead.' 
-      });
-    }
-
-    // Delete the event
-    await Event.findByIdAndDelete(eventId);
-
-    res.json({ message: 'Event deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Event registration routes
-router.post('/:id/register', checkJwt, checkUser, async (req, res) => {
-  try {
-    const { ticketType, quantity = 1 } = req.body;
-    const eventId = req.params.id;
-    
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    if (event.status !== 'published') {
-      return res.status(400).json({ message: 'Event is not available for registration' });
-    }
-    
-    // Create ticket(s)
-    const tickets = [];
-    for (let i = 0; i < quantity; i++) {
-      const ticket = new Ticket({
-        event: eventId,
-        user: req.dbUser._id,
-        ticketType,
-        price: event.ticketPrice || 0,
-        status: 'confirmed'
-      });
-      tickets.push(ticket);
-    }
-    
-    await Ticket.insertMany(tickets);
-
-    // Add notification after successful registration
-    const user = await User.findById(req.user.id);
-        
-    // Send confirmation email
-    if (user.preferences?.notifications?.email) {
-      await emailService.sendEventConfirmation(user, event);
-        console.log(`✅ Registration confirmation email sent to ${user.email}`);
-    }
-        
-    // Send confirmation SMS
-    if (user.preferences?.notifications?.sms && user.phone) {
-      await smsService.sendEventConfirmation(user, event);
-        console.log(`✅ Registration confirmation SMS sent to ${user.phone}`);
-    }
-    
-    res.status(201).json({ message: 'Registration successful', tickets });
-  } catch (error) {
-    console.error('Error registering for event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-router.get('/:id/attendees', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const tickets = await Ticket.find({ event: req.params.id })
-      .populate('user', 'name email')
-      .populate('event', 'title');
-    
-    res.json(tickets);
-  } catch (error) {
-    console.error('Error fetching event attendees:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Event feedback routes
-router.post('/:id/feedback', checkJwt, checkUser, async (req, res) => {
-  try {
-    const { rating, comment } = req.body;
-    const eventId = req.params.id;
-    
-    // Check if user has attended this event
-    const ticket = await Ticket.findOne({ 
-      event: eventId, 
-      user: req.dbUser._id,
-      status: 'confirmed'
-    });
-    
-    if (!ticket) {
-      return res.status(400).json({ message: 'You must attend the event to leave feedback' });
-    }
-    
-    // Add feedback to event (you might want to create a separate Feedback model)
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    // For now, we'll just return success
-    res.json({ message: 'Feedback submitted successfully' });
-  } catch (error) {
-    console.error('Error submitting feedback:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-router.get('/:id/feedback', (req, res) => {
-  // Placeholder until we implement the controller
-  res.status(200).json({ message: 'Get event feedback endpoint' });
-});
+// SPECIFIC ROUTES MUST COME BEFORE GENERIC /:id ROUTE
 
 // Get upcoming events (for attendees)
 router.get('/upcoming', async (req, res) => {
@@ -429,127 +133,7 @@ router.get('/analytics', checkJwt, checkUser, authorize('organizer', 'admin'), a
   }
 });
 
-// Admin routes for event management
-// Get event analytics
-router.get('/analytics', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const organizerId = req.dbUser._id;
-    
-    // Get organizer's events
-    const events = await Event.find({ organizer: organizerId });
-    
-    // Calculate analytics
-    const totalEvents = events.length;
-    const totalAttendees = events.reduce((total, event) => total + (event.attendees?.length || 0), 0);
-    
-    // Calculate total revenue from tickets
-    const eventIds = events.map(e => e._id);
-    const tickets = await Ticket.find({ event: { $in: eventIds } });
-    const totalRevenue = tickets.reduce((total, ticket) => total + ticket.price, 0);
-    
-    // Calculate average views (using a mock value since views field doesn't exist)
-    const avgViews = events.length > 0 ? events.reduce((total, event) => total + (event.attendees?.length * 10 || 0), 0) / events.length : 0;
-    
-    res.json({
-      totalEvents,
-      totalAttendees,
-      totalRevenue,
-      avgViews: Math.round(avgViews)
-    });
-  } catch (error) {
-    console.error('Error fetching event analytics:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Create new event
-router.post('/', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const { title, description, date, endDate, location, isVirtual, virtualLink, capacity, ticketPrice, ticketTypes, category, tags } = req.body;
-    
-    const event = new Event({
-      title,
-      description,
-      date,
-      endDate,
-      location,
-      isVirtual: isVirtual || false,
-      virtualLink,
-      capacity,
-      ticketPrice: ticketPrice || 0,
-      ticketTypes: ticketTypes || [],
-      category,
-      tags: tags || [],
-      organizer: req.dbUser._id,
-      status: 'draft' // Events start as draft and need admin approval
-    });
-    
-    await event.save();
-    res.status(201).json(event);
-  } catch (error) {
-    console.error('Error creating event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Update event
-router.put('/:eventId', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const event = await Event.findOneAndUpdate(
-      { _id: req.params.eventId, organizer: req.dbUser._id },
-      req.body,
-      { new: true }
-    );
-    
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    res.json(event);
-  } catch (error) {
-    console.error('Error updating event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Delete event
-router.delete('/:eventId', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
-  try {
-    const event = await Event.findOneAndDelete({
-      _id: req.params.eventId,
-      organizer: req.dbUser._id
-    });
-    
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    res.json({ message: 'Event deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get single event
-router.get('/:eventId', async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.eventId)
-      .populate('organizer', 'name email');
-    
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    res.json(event);
-  } catch (error) {
-    console.error('Error fetching event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Admin approval routes
-// Get events pending approval (Admin only)
+// Admin approval routes - MUST BE BEFORE /:id routes
 router.get('/admin/pending', checkJwt, checkUser, authorize('admin'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -585,95 +169,6 @@ router.get('/admin/pending', checkJwt, checkUser, authorize('admin'), async (req
   }
 });
 
-// Approve event (Admin only)
-router.put('/:eventId/approve', checkJwt, checkUser, authorize('admin'), async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.eventId);
-    
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    if (event.approvalStatus !== 'pending' && event.status !== 'pending_approval') {
-      return res.status(400).json({ message: 'Event is not pending approval' });
-    }
-    
-    event.approvalStatus = 'approved';
-    event.status = 'published';
-    event.approvedBy = req.dbUser._id;
-    event.approvedAt = new Date();
-    
-    await event.save();
-    
-    // Populate organizer info for response
-    await event.populate('organizer', 'name email');
-    await event.populate('approvedBy', 'name email');
-    
-    // Send approval notification to organizer
-    const organizer = event.organizer;
-    console.log(`Sending approval notification to organizer: ${organizer.email}`);
-    
-    if (organizer.preferences?.notifications?.email) {
-      await emailService.sendEventApprovalNotification(organizer, event);
-      console.log(`✅ Approval email sent to ${organizer.email}`);
-    }
-    
-    if (organizer.preferences?.notifications?.sms && organizer.phone) {
-      await smsService.sendEventApprovalNotification(organizer, event);
-      console.log(`✅ Approval SMS sent to ${organizer.phone}`);
-    }
-    
-    res.json({
-      message: 'Event approved and published successfully!',
-      event
-    });
-  } catch (error) {
-    console.error('Error approving event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Reject event (Admin only)
-router.put('/:eventId/reject', checkJwt, checkUser, authorize('admin'), async (req, res) => {
-  try {
-    const { rejectionReason } = req.body;
-    
-    if (!rejectionReason) {
-      return res.status(400).json({ message: 'Rejection reason is required' });
-    }
-    
-    const event = await Event.findById(req.params.eventId);
-    
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
-    
-    if (event.approvalStatus !== 'pending') {
-      return res.status(400).json({ message: 'Event is not pending approval' });
-    }
-    
-    event.approvalStatus = 'rejected';
-    event.status = 'rejected';
-    event.rejectionReason = rejectionReason;
-    event.approvedBy = req.dbUser._id;
-    event.approvedAt = new Date();
-    
-    await event.save();
-    
-    // Populate organizer info for response
-    await event.populate('organizer', 'name email');
-    await event.populate('approvedBy', 'name email');
-    
-    res.json({
-      message: 'Event rejected successfully!',
-      event
-    });
-  } catch (error) {
-    console.error('Error rejecting event:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
 // Get approval statistics (Admin only)
 router.get('/admin/approval-stats', checkJwt, checkUser, authorize('admin'), async (req, res) => {
   try {
@@ -696,6 +191,516 @@ router.get('/admin/approval-stats', checkJwt, checkUser, authorize('admin'), asy
   } catch (error) {
     console.error('Error fetching approval stats:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// NOW THE GENERIC /:id ROUTE
+router.get('/:id', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id)
+      .populate('organizer', 'name email')
+      .populate('attendees.user', 'name email');
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    res.json(event);
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create new event
+router.post('/', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
+  try {
+    const { ticketTypes, ticketPrice, capacity } = req.body;
+    
+    const eventData = {
+      ...req.body,
+      organizer: req.dbUser._id,
+      // Create default ticket type if none provided (matching eventcraft2 behavior)
+      ticketTypes: ticketTypes || [{
+        name: 'General Admission',
+        price: ticketPrice || 0,
+        description: 'Standard event admission',
+        quantity: capacity || 100,
+        quantitySold: 0
+      }],
+      // Admin can directly publish, organizers need approval (matching eventcraft2 behavior)
+      status: req.dbUser.role === 'admin' ? 'published' : 'pending_approval',
+      approvalStatus: req.dbUser.role === 'admin' ? 'approved' : 'pending',
+      submittedForApproval: req.dbUser.role === 'organizer',
+      submittedAt: req.dbUser.role === 'organizer' ? new Date() : undefined,
+      approvedBy: req.dbUser.role === 'admin' ? req.dbUser._id : undefined,
+      approvedAt: req.dbUser.role === 'admin' ? new Date() : undefined
+    };
+    
+    const event = new Event(eventData);
+    await event.save();
+    
+    // Populate organizer info for response
+    await event.populate('organizer', 'name email');
+
+    const responseMessage = req.dbUser.role === 'admin' 
+      ? 'Event created and published successfully!'
+      : 'Event created and submitted for admin approval!';
+
+    res.status(201).json({
+      message: responseMessage,
+      event
+    });
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update event
+router.put('/:id', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Check if user is organizer or admin
+    if (req.dbUser.role !== 'admin' && event.organizer.toString() !== req.dbUser._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update this event' });
+    }
+    
+    const updatedEvent = await Event.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    ).populate('organizer', 'name email');
+    
+    res.json(updatedEvent);
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete event
+router.delete('/:id', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Check if user is organizer or admin
+    if (req.dbUser.role !== 'admin' && event.organizer.toString() !== req.dbUser._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to delete this event' });
+    }
+    
+    await Event.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Submit event for approval
+router.put('/:id/submit', checkJwt, checkUser, authorize('organizer'), async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Check if user is organizer
+    if (event.organizer.toString() !== req.dbUser._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to submit this event' });
+    }
+    
+    event.submittedForApproval = true;
+    event.submittedAt = new Date();
+    event.status = 'pending_approval';
+    event.approvalStatus = 'pending';
+    
+    await event.save();
+    
+    res.json({ message: 'Event submitted for approval', event });
+  } catch (error) {
+    console.error('Error submitting event:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Approve event (Admin only)
+router.put('/:eventId/approve', checkJwt, checkUser, authorize('admin'), async (req, res) => {
+  try {
+    console.log('🔍 Starting event approval process...');
+    
+    // First, find and populate the event with organizer
+    const event = await Event.findById(req.params.eventId).populate('organizer', 'name email preferences phone');
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    console.log('📅 Event found:', event.title);
+    
+    if (!event.organizer) {
+      return res.status(400).json({ message: 'Event has no organizer assigned' });
+    }
+    
+    console.log('👤 Organizer:', event.organizer.name, event.organizer.email);
+    console.log('📱 Phone:', event.organizer.phone || 'No phone number');
+    console.log('⚙️ Full preferences object:', JSON.stringify(event.organizer.preferences, null, 2));
+    
+    // More flexible approval checking
+    const isApprovable = (
+      event.approvalStatus === 'pending' || 
+      event.status === 'pending_approval' ||
+      event.status === 'draft' ||
+      event.submittedForApproval === true
+    );
+    
+    if (!isApprovable) {
+      return res.status(400).json({ 
+        message: `Event is not pending approval. Current status: ${event.status}, approval: ${event.approvalStatus}` 
+      });
+    }
+    
+    // Update event status
+    event.approvalStatus = 'approved';
+    event.status = 'published';
+    event.approvedBy = req.dbUser._id;
+    event.approvedAt = new Date();
+    
+    await event.save();
+    console.log('✅ Event status updated to approved/published');
+    
+    // Send notifications to organizer
+    const organizer = event.organizer;
+    
+    if (organizer) {
+      console.log(`📧 Attempting to send approval notification to organizer: ${organizer.email}`);
+      
+      // Check preferences with detailed logging
+      const emailPreference = organizer.preferences?.notifications?.email !== false;
+      const smsPreference = organizer.preferences?.notifications?.sms === true;
+      
+      console.log('📧 Email preference check:', {
+        'organizer.preferences': !!organizer.preferences,
+        'organizer.preferences.notifications': !!organizer.preferences?.notifications,
+        'email setting': organizer.preferences?.notifications?.email,
+        'emailPreference result': emailPreference
+      });
+      
+      console.log('📱 SMS preference check:', {
+        'sms setting': organizer.preferences?.notifications?.sms,
+        'phone available': !!organizer.phone,
+        'smsPreference result': smsPreference
+      });
+      
+      if (emailPreference) {
+        try {
+          console.log('📧 Attempting to send approval email...');
+          const emailResult = await emailService.sendEventApprovalNotification(organizer, event);
+          console.log(`✅ Approval email result:`, emailResult);
+          console.log(`✅ Approval email sent to ${organizer.email}`);
+        } catch (error) {
+          console.error(`❌ Failed to send approval email to ${organizer.email}:`, error);
+        }
+      } else {
+        console.log('📧 Email notifications disabled for this user or email preference is false');
+      }
+      
+      if (smsPreference && organizer.phone) {
+        try {
+          console.log('📱 Attempting to send approval SMS...');
+          const smsResult = await smsService.sendEventApprovalNotification(organizer, event);
+          console.log(`✅ Approval SMS result:`, smsResult);
+          console.log(`✅ Approval SMS sent to ${organizer.phone}`);
+        } catch (error) {
+          console.error(`❌ Failed to send approval SMS to ${organizer.phone}:`, error);
+        }
+      } else {
+        if (!smsPreference) {
+          console.log('📱 SMS notifications disabled for this user');
+        }
+        if (!organizer.phone) {
+          console.log('📱 No phone number available for SMS');
+        }
+      }
+    } else {
+      console.log('❌ No organizer found for notifications');
+    }
+    
+    res.json({
+      message: 'Event approved and published successfully!',
+      event
+    });
+  } catch (error) {
+    console.error('Error approving event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Reject event (Admin only)
+router.put('/:eventId/reject', checkJwt, checkUser, authorize('admin'), async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    const event = await Event.findById(req.params.eventId).populate('organizer', 'name email preferences phone');
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    event.approvalStatus = 'rejected';
+    event.status = 'rejected';
+    event.rejectedBy = req.dbUser._id;
+    event.rejectedAt = new Date();
+    event.rejectionReason = reason;
+    
+    await event.save();
+    
+    // Send rejection notification to organizer
+    const organizer = event.organizer;
+    
+    if (organizer && organizer.preferences?.notifications?.email !== false) {
+      try {
+        await emailService.sendEmail({
+          to: organizer.email,
+          subject: `Event Rejected: ${event.title}`,
+          html: `
+            <h1>❌ Your event has been rejected</h1>
+            <p>Hello ${organizer.name},</p>
+            <p>Unfortunately, your event <strong>${event.title}</strong> has been rejected.</p>
+            ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+            <p>You can make the necessary changes and resubmit your event for approval.</p>
+            <p>Thank you for using EventCraft!</p>
+          `
+        });
+        console.log(`✅ Rejection email sent to ${organizer.email}`);
+      } catch (error) {
+        console.error(`❌ Failed to send rejection email:`, error);
+      }
+    }
+    
+    res.json({
+      message: 'Event rejected successfully',
+      event
+    });
+  } catch (error) {
+    console.error('Error rejecting event:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Event registration route
+router.post('/:id/register', checkJwt, checkUser, async (req, res) => {
+  try {
+    const { ticketType, quantity = 1 } = req.body;
+    const eventId = req.params.id;
+    
+    console.log(`📧 User ${req.dbUser.email} registering for event ${eventId}`);
+    
+    const event = await Event.findById(eventId).populate('organizer', 'name email');
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    if (event.status !== 'published') {
+      return res.status(400).json({ message: 'Event is not available for registration' });
+    }
+    
+    // Check if user is already registered
+    const existingTicket = await Ticket.findOne({
+      event: eventId,
+      user: req.dbUser._id
+    });
+    
+    if (existingTicket) {
+      return res.status(400).json({ message: 'You are already registered for this event' });
+    }
+    
+    // Check capacity
+    const totalAttendees = event.attendees.length;
+    if (totalAttendees + quantity > event.capacity) {
+      return res.status(400).json({ message: 'Event is at full capacity' });
+    }
+    
+    console.log(`✅ Creating tickets for user ${req.dbUser.email}`);
+    
+    // Create ticket(s)
+    const tickets = [];
+    for (let i = 0; i < quantity; i++) {
+      const ticket = new Ticket({
+        event: eventId,
+        user: req.dbUser._id,
+        ticketType: ticketType || 'General Admission',
+        price: event.ticketPrice || 0,
+        status: 'confirmed',
+        purchaseDate: new Date()
+      });
+      tickets.push(ticket);
+    }
+    
+    const savedTickets = await Ticket.insertMany(tickets);
+    console.log(`✅ Created ${savedTickets.length} tickets`);
+
+    // Add user to event attendees
+    event.attendees.push({
+      user: req.dbUser._id,
+      ticketType: ticketType || 'General Admission',
+      purchaseDate: new Date(),
+      checkedIn: false
+    });
+    
+    await event.save();
+    console.log(`✅ Added user to event attendees`);
+
+    // Get user with preferences for notifications
+    const user = await User.findById(req.dbUser._id);
+    
+    console.log(`📧 Sending registration confirmation to: ${user.email}`);
+    console.log(`⚙️ User preferences:`, user.preferences);
+        
+    // Send confirmation email
+    if (user.preferences?.notifications?.email !== false) {
+      try {
+        await emailService.sendEventConfirmation(user, event);
+        console.log(`✅ Registration confirmation email sent to ${user.email}`);
+      } catch (error) {
+        console.error(`❌ Failed to send confirmation email:`, error);
+      }
+    } else {
+      console.log(`📧 Email notifications disabled for ${user.email}`);
+    }
+        
+    // Send confirmation SMS
+    if (user.preferences?.notifications?.sms === true && user.phone) {
+      try {
+        await smsService.sendEventConfirmation(user, event);
+        console.log(`✅ Registration confirmation SMS sent to ${user.phone}`);
+      } catch (error) {
+        console.error(`❌ Failed to send confirmation SMS:`, error);
+      }
+    } else {
+      if (!user.preferences?.notifications?.sms) {
+        console.log(`📱 SMS notifications disabled for ${user.email}`);
+      }
+      if (!user.phone) {
+        console.log(`📱 No phone number available for ${user.email}`);
+      }
+    }
+    
+    res.status(201).json({ 
+      message: 'Registration successful', 
+      tickets: savedTickets,
+      event: {
+        title: event.title,
+        date: event.date,
+        location: event.location
+      }
+    });
+  } catch (error) {
+    console.error('Error registering for event:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// TEST REGISTRATION ENDPOINT (remove in production)
+router.post('/test-register/:id', checkJwt, checkUser, async (req, res) => {
+  try {
+    console.log('🧪 === TEST REGISTRATION ENDPOINT ===');
+    console.log('JWT auth info:', req.auth);
+    
+    // Get the real user from the database using auth0Id
+    const realUser = await User.findOne({ auth0Id: req.auth.sub });
+    if (!realUser) {
+      return res.status(404).json({ message: 'User not found in database' });
+    }
+    
+    console.log('Real user:', realUser.email);
+    console.log('Event ID:', req.params.id);
+    
+    const eventId = req.params.id;
+    const event = await Event.findById(eventId).populate('organizer', 'name email');
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    console.log('Event found:', event.title);
+    
+    // Check if user is already registered
+    const existingTicket = await Ticket.findOne({
+      event: eventId,
+      user: realUser._id
+    });
+    
+    if (existingTicket) {
+      return res.status(400).json({ message: 'Already registered' });
+    }
+    
+    // Force create a test ticket
+    const ticket = new Ticket({
+      event: eventId,
+      user: realUser._id,
+      ticketType: 'Test Ticket',
+      price: 0,
+      status: 'confirmed',
+      purchaseDate: new Date()
+    });
+    
+    await ticket.save();
+    console.log('✅ Test ticket created:', ticket._id);
+    
+    // Add user to event attendees
+    event.attendees.push({
+      user: realUser._id,
+      ticketType: 'Test Ticket',
+      purchaseDate: new Date(),
+      checkedIn: false
+    });
+    
+    await event.save();
+    console.log('✅ User added to event attendees');
+    
+    // Send confirmation email
+    if (realUser.preferences?.notifications?.email !== false) {
+      try {
+        await emailService.sendEventConfirmation(realUser, event);
+        console.log(`✅ Test confirmation email sent to ${realUser.email}`);
+      } catch (error) {
+        console.error(`❌ Failed to send test email:`, error);
+      }
+    }
+    
+    // Send confirmation SMS
+    if (realUser.preferences?.notifications?.sms === true && realUser.phone) {
+      try {
+        await smsService.sendEventConfirmation(realUser, event);
+        console.log(`✅ Test confirmation SMS sent to ${realUser.phone}`);
+      } catch (error) {
+        console.error(`❌ Failed to send test SMS:`, error);
+      }
+    }
+    
+    res.json({ 
+      message: 'Test registration successful', 
+      ticket,
+      notifications: {
+        emailSent: realUser.preferences?.notifications?.email !== false,
+        smsSent: realUser.preferences?.notifications?.sms === true && !!realUser.phone
+      }
+    });
+  } catch (error) {
+    console.error('Test registration error:', error);
+    res.status(500).json({ message: 'Test failed', error: error.message });
   }
 });
 

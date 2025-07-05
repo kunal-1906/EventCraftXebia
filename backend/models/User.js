@@ -34,7 +34,7 @@ const UserSchema = new mongoose.Schema({
   preferences: {
     notifications: {
       email: { type: Boolean, default: true },
-      push: { type: Boolean, default: true }
+      sms: { type: Boolean, default: false }
     },
     eventTypes: [String],
     privacy: {
@@ -58,4 +58,4 @@ UserSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('User', UserSchema); 
+module.exports = mongoose.model('User', UserSchema);
