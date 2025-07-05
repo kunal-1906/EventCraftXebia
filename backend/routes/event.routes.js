@@ -3,6 +3,8 @@ const router = express.Router();
 const { checkJwt, checkUser, authorize } = require('../middleware/auth');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const emailService = require('../services/emailService');
+const smsService = require('../services/smsService');
 // We'll implement the controller later
 // const eventController = require('../controllers/event.controller');
 
@@ -285,6 +287,21 @@ router.post('/:id/register', checkJwt, checkUser, async (req, res) => {
     }
     
     await Ticket.insertMany(tickets);
+
+    // Add notification after successful registration
+    const user = await User.findById(req.user.id);
+        
+    // Send confirmation email
+    if (user.preferences?.notifications?.email) {
+      await emailService.sendEventConfirmation(user, event);
+        console.log(`✅ Registration confirmation email sent to ${user.email}`);
+    }
+        
+    // Send confirmation SMS
+    if (user.preferences?.notifications?.sms && user.phone) {
+      await smsService.sendEventConfirmation(user, event);
+        console.log(`✅ Registration confirmation SMS sent to ${user.phone}`);
+    }
     
     res.status(201).json({ message: 'Registration successful', tickets });
   } catch (error) {
@@ -592,6 +609,20 @@ router.put('/:eventId/approve', checkJwt, checkUser, authorize('admin'), async (
     await event.populate('organizer', 'name email');
     await event.populate('approvedBy', 'name email');
     
+    // Send approval notification to organizer
+    const organizer = event.organizer;
+    console.log(`Sending approval notification to organizer: ${organizer.email}`);
+    
+    if (organizer.preferences?.notifications?.email) {
+      await emailService.sendEventApprovalNotification(organizer, event);
+      console.log(`✅ Approval email sent to ${organizer.email}`);
+    }
+    
+    if (organizer.preferences?.notifications?.sms && organizer.phone) {
+      await smsService.sendEventApprovalNotification(organizer, event);
+      console.log(`✅ Approval SMS sent to ${organizer.phone}`);
+    }
+    
     res.json({
       message: 'Event approved and published successfully!',
       event
@@ -668,4 +699,4 @@ router.get('/admin/approval-stats', checkJwt, checkUser, authorize('admin'), asy
   }
 });
 
-module.exports = router; 
+module.exports = router;
