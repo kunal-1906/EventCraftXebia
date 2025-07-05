@@ -56,7 +56,7 @@ const AttendeeDashboard = () => {
       // Fetch user tickets
       try {
         console.log('Fetching user tickets...');
-        const ticketsResponse = await ticketService.getUserTickets();
+        const ticketsResponse = await ticketService.getMyTickets();
         console.log('Tickets response:', ticketsResponse);
         
         // Handle both array response and object with tickets property
@@ -476,7 +476,7 @@ const TicketCard = ({ ticket, formatDate }) => {
       </div>
       
       <h3 className="text-lg font-semibold text-gray-900 mb-2">
-        {ticket.eventTitle || 'Event Ticket'}
+        {ticket.event?.title || ticket.eventTitle || 'Event Ticket'}
       </h3>
       
       <div className="space-y-2 text-sm text-gray-600">

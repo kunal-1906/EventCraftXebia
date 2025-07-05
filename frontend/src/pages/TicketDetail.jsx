@@ -46,7 +46,7 @@ const TicketDetail = () => {
           
           // Try to get from mock tickets
           console.log('Attempting to get ticket from mock data');
-          const mockTickets = await ticketService.getUserTickets();
+          const mockTickets = await ticketService.getMyTickets();
           console.log('Mock tickets count:', Array.isArray(mockTickets) ? mockTickets.length : 
                       (mockTickets.data?.length || mockTickets.tickets?.length || 'unknown'));
           

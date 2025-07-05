@@ -151,33 +151,19 @@ const EventDetails = () => {
     try {
       setProcessingPayment(true);
       
-      console.log('Processing payment for event:', id);
+      console.log('Processing registration for event:', id);
       console.log('Selected ticket type:', selectedTicketType);
       console.log('Quantity:', quantity);
       
-      // Register for the event
-      try {
-        await eventService.registerForEvent(id);
-        console.log('Successfully registered for event');
-      } catch (regError) {
-        console.error('Registration error, but continuing with ticket purchase:', regError);
-        // Continue with ticket purchase even if registration fails
-      }
+      // Register for the event (this creates the ticket automatically)
+      const registrationResponse = await eventService.registerForEvent(id);
+      console.log('Successfully registered for event:', registrationResponse);
       
-      // Purchase tickets
-      const ticketResponse = await ticketService.purchaseTickets(
-        id,
-        selectedTicketType?.id || `default-${id}`,
-        quantity
-      );
-      
-      console.log('Ticket purchase response:', ticketResponse);
-      
-      success('Payment successful! You are now registered for the event.');
+      success('Registration successful! You are now registered for the event.');
       setStep('confirmation');
     } catch (err) {
-      console.error('Payment error:', err);
-      showError(err.message || 'Payment failed. Please try again.');
+      console.error('Registration error:', err);
+      showError(err.message || 'Registration failed. Please try again.');
     } finally {
       setProcessingPayment(false);
     }
