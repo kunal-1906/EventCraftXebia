@@ -80,36 +80,66 @@ const checkUser = async (req, res, next) => {
     console.log('NODE_ENV:', process.env.NODE_ENV);
     console.log('req.auth:', req.auth);
     
-    // Bypass user check in development mode
+    // Even in development mode, try to use real users from database
     if (process.env.NODE_ENV === 'development') {
       console.log('🧪 Development mode detected');
-      // Check for role header to simulate different users
-      const mockRole = req.headers['x-mock-role'] || 'organizer'; // Default to organizer
       
-      // Create mock users based on role
+      // Check if we have real auth data from Auth0
+      if (req.auth && req.auth.sub) {
+        console.log('🔍 Real auth detected, looking up user by auth0Id:', req.auth.sub);
+        
+        // Look up real user by auth0Id
+        let user = await User.findOne({ auth0Id: req.auth.sub });
+        
+        // If not found by auth0Id, try finding by email
+        if (!user && req.auth.email) {
+          console.log('🔍 auth0Id lookup failed, trying email:', req.auth.email);
+          user = await User.findOne({ email: req.auth.email });
+        }
+        
+        if (user) {
+          console.log('✅ Real user found:', user.name, user.email, user.role);
+          req.dbUser = user;
+          return next();
+        }
+      }
+      
+      // Only fall back to mock users if no real auth data exists
+      console.log('🧪 No real auth data, falling back to mock user');
+      const mockRole = req.headers['x-mock-role'] || 'organizer';
+      
+      // Try to find a real user with the requested role
+      const realUser = await User.findOne({ role: mockRole });
+      if (realUser) {
+        console.log(`✅ Using real ${mockRole} user:`, realUser.name, realUser.email);
+        req.dbUser = realUser;
+        return next();
+      }
+      
+      // Last resort: use mock users only if no real users exist
       const mockUsers = {
         admin: {
           _id: '123456789012345678901234',
-          name: 'Admin User',
+          name: 'Mock Admin User',
           email: 'admin@example.com',
           role: 'admin'
         },
         organizer: {
           _id: '123456789012345678901235',
-          name: 'Organizer User', 
+          name: 'Mock Organizer User', 
           email: 'organizer@example.com',
           role: 'organizer'
         },
         attendee: {
           _id: '123456789012345678901236',
-          name: 'Attendee User',
+          name: 'Mock Attendee User',
           email: 'attendee@example.com', 
           role: 'attendee'
         }
       };
       
       req.dbUser = mockUsers[mockRole] || mockUsers.organizer;
-      console.log('🧪 Using mock user:', req.dbUser);
+      console.log('🧪 Using mock user as last resort:', req.dbUser);
       return next();
     }
 
@@ -147,9 +177,33 @@ const checkUser = async (req, res, next) => {
 // Middleware to authorize based on user role
 const authorize = (roles) => {
   return (req, res, next) => {
-    // Bypass role check in development mode
+    // In development mode, still check roles but be more flexible
     if (process.env.NODE_ENV === 'development') {
-      return next();
+      console.log('🧪 Development authorization check');
+      console.log('Required roles:', roles);
+      console.log('User role:', req.dbUser?.role);
+      
+      // Allow if user has proper role or if using mock admin header
+      if (req.dbUser && req.dbUser.role) {
+        const allowedRoles = Array.isArray(roles) ? roles : [roles];
+        if (allowedRoles.includes(req.dbUser.role)) {
+          console.log('✅ Role authorized');
+          return next();
+        }
+      }
+      
+      // Check for admin override header in development
+      if (req.headers['x-mock-role'] === 'admin' && (Array.isArray(roles) ? roles.includes('admin') : roles === 'admin')) {
+        console.log('🧪 Admin override allowed');
+        return next();
+      }
+      
+      console.log('❌ Role authorization failed');
+      return res.status(403).json({ 
+        message: 'Access denied: insufficient permissions',
+        required: roles,
+        actual: req.dbUser?.role
+      });
     }
 
     if (!req.dbUser) {

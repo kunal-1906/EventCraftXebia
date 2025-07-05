@@ -348,8 +348,12 @@ router.put('/:eventId/approve', checkJwt, checkUser, authorize('admin'), async (
     }
     
     console.log('📅 Event found:', event.title);
+    console.log('📊 Current event status:', event.status);
+    console.log('✅ Current approval status:', event.approvalStatus);
+    console.log('📝 Submitted for approval:', event.submittedForApproval);
     
     if (!event.organizer) {
+      console.log('❌ Event has no organizer assigned');
       return res.status(400).json({ message: 'Event has no organizer assigned' });
     }
     
@@ -365,9 +369,19 @@ router.put('/:eventId/approve', checkJwt, checkUser, authorize('admin'), async (
       event.submittedForApproval === true
     );
     
+    console.log('🔍 Approval check details:', {
+      'approvalStatus === pending': event.approvalStatus === 'pending',
+      'status === pending_approval': event.status === 'pending_approval',
+      'status === draft': event.status === 'draft',
+      'submittedForApproval === true': event.submittedForApproval === true,
+      'isApprovable': isApprovable
+    });
+    
     if (!isApprovable) {
+      const errorMsg = `Event is not pending approval. Current status: ${event.status}, approval: ${event.approvalStatus}, submitted: ${event.submittedForApproval}`;
+      console.log('❌ Approval check failed:', errorMsg);
       return res.status(400).json({ 
-        message: `Event is not pending approval. Current status: ${event.status}, approval: ${event.approvalStatus}` 
+        message: errorMsg
       });
     }
     

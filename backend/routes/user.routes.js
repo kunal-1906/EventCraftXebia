@@ -3,20 +3,24 @@ const router = express.Router();
 const User = require('../models/User');
 const { checkJwt, checkUser, authorize } = require('../middleware/auth');
 
+// Test endpoint to verify user routes are working
+router.get('/test', (req, res) => {
+  res.json({ message: 'User routes are working!', timestamp: new Date() });
+});
+
 // Get current user
-router.get('/me', checkJwt, async (req, res) => {
+router.get('/me', checkJwt, checkUser, async (req, res) => {
   try {
-    // Get Auth0 user ID from token
-    const auth0Id = req.auth.sub;
+    console.log('👤 Getting current user profile');
+    console.log('📧 User:', req.dbUser ? req.dbUser.email : 'NOT SET');
     
-    // Find user in database
-    const user = await User.findOne({ auth0Id });
-    
-    if (!user) {
+    if (!req.dbUser) {
+      console.log('❌ No user found in request');
       return res.status(404).json({ message: 'User not found' });
     }
     
-    res.json(user);
+    console.log('✅ Returning user profile');
+    res.json(req.dbUser);
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ message: 'Server error' });
@@ -136,7 +140,19 @@ router.post('/dummy', async (req, res) => {
 // Update user profile
 router.put('/profile', checkJwt, checkUser, async (req, res) => {
   try {
+    console.log('🔧 Profile update request received');
+    console.log('📋 Request body:', req.body);
+    console.log('👤 Current user:', req.dbUser ? req.dbUser.email : 'NOT SET');
+    
+    if (!req.dbUser) {
+      console.log('❌ No user found in request');
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+    
     const { name, bio, phone, location, preferences } = req.body;
+    
+    console.log('🔄 Updating user profile...');
+    console.log('📝 Update data:', { name, bio, phone, location, preferences });
     
     // Find user and update
     const user = await User.findByIdAndUpdate(
@@ -154,10 +170,13 @@ router.put('/profile', checkJwt, checkUser, async (req, res) => {
       { new: true }
     );
     
+    console.log('✅ Profile updated successfully');
+    console.log('📋 Updated user:', user.email, user.phone);
+    
     res.json(user);
   } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('❌ Error updating profile:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

@@ -30,7 +30,7 @@ const Profile = () => {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [bio, setBio] = useState(user?.bio || '');
-  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || user?.phone || '');
   const [profilePicture, setProfilePicture] = useState(user?.profilePicture || 'https://via.placeholder.com/150');
   const [isUploading, setIsUploading] = useState(false);
   const [tickets, setTickets] = useState([]);
@@ -137,6 +137,17 @@ const Profile = () => {
     navigate('/settings');
   };
   
+  // Update local state when user object changes (after successful profile update)
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setBio(user.bio || '');
+      setPhoneNumber(user.phoneNumber || user.phone || '');
+      setProfilePicture(user.profilePicture || 'https://via.placeholder.com/150');
+    }
+  }, [user]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Debug Info - Remove this in production */}
@@ -321,7 +332,7 @@ const Profile = () => {
                       <PhoneIcon className="w-5 h-5 text-gray-400" />
                       <div>
                         <p className="text-sm font-medium text-gray-500">Phone</p>
-                        <p className="text-gray-900">{user?.phoneNumber || 'Not provided'}</p>
+                        <p className="text-gray-900">{user?.phoneNumber || user?.phone || 'Not provided'}</p>
                       </div>
                     </div>
                     
