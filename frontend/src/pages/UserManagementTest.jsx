@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { deleteUser } from '../services/adminService';
+import { deleteUser, getAllUsers } from '../services/adminService';
 
 const UserManagementTest = () => {
   const [message, setMessage] = useState('');
@@ -10,16 +10,9 @@ const UserManagementTest = () => {
   useEffect(() => {
     const testAPI = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/admin/users', {
-          headers: {
-            'x-mock-role': 'admin',
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        const data = await response.json();
+        const data = await getAllUsers();
         console.log('API Response:', data);
-        setUsers(data.users || []);
+        setUsers(data.users || data || []);
       } catch (err) {
         console.error('API Error:', err);
         setError(err.message);
@@ -37,17 +30,7 @@ const UserManagementTest = () => {
 
     try {
       setIsDeleting(true);
-      const response = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-mock-role': 'admin',
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      await deleteUser(userId);
 
       // Remove the user from the local state
       setUsers(users.filter(user => user._id !== userId));
