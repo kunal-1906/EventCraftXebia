@@ -81,6 +81,33 @@ router.get('/upcoming', async (req, res) => {
   }
 });
 
+// Get popular events based on attendees
+router.get('/popular', async (req, res) => {
+  try {
+    const events = await Event.find({
+      approvalStatus: 'approved',
+      status: 'published'
+    })
+      .sort({ 'attendees.length': -1 }) // fallback if attendanceCount not present
+      .limit(4)
+      .populate('organizer', 'name email');
+
+    // Optional: sort manually if attendanceCount is not a separate field
+    const sorted = events
+      .map(event => ({
+        ...event._doc,
+        popularityScore: event.attendees.length // or use attendanceCount if available
+      }))
+      .sort((a, b) => b.popularityScore - a.popularityScore);
+
+    res.json(sorted);
+  } catch (error) {
+    console.error('Error fetching popular events:', error);
+    res.status(500).json({ message: 'Failed to fetch popular events' });
+  }
+});
+
+
 // Get organizer's events
 router.get('/organizer', checkJwt, checkUser, authorize('organizer', 'admin'), async (req, res) => {
   try {
