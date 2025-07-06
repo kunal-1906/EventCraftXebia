@@ -42,6 +42,10 @@ const UserSchema = new mongoose.Schema({
       showPhone: { type: Boolean, default: false }
     }
   },
+  favoriteEvents: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Event'
+  }],
   createdAt: {
     type: Date,
     default: Date.now

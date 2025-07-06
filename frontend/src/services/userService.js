@@ -35,7 +35,8 @@ const userService = {
       const requestData = {
         name: userData.name,
         bio: userData.bio,
-        phone: userData.phoneNumber, // Map phoneNumber to phone
+        phone: userData.phoneNumber || userData.phone, // Map phoneNumber to phone
+        location: userData.location,
         preferences: userData.preferences
       };
       
@@ -58,7 +59,9 @@ const userService = {
       console.log('🔄 Mapped user data for frontend:', updatedUser);
       
       // Update local storage with new user data
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const mergedUser = { ...currentUser, ...updatedUser };
+      localStorage.setItem('user', JSON.stringify(mergedUser));
       
       console.log('💾 Updated localStorage with new user data');
       

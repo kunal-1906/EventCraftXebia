@@ -311,17 +311,7 @@ export const eventService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching organizer events:', error);
-      // Fallback: Get all events and filter by organizer in frontend
-      // This is a temporary solution for demo purposes
-      try {
-        const allEventsResponse = await api.get('/events');
-        const allEvents = allEventsResponse.data.events || [];
-        // For demo, return first 3 events as if they belong to the current organizer
-        return allEvents.slice(0, 3);
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-        return mockDelay([]);
-      }
+      throw error; // Don't use fallback, let the caller handle the error
     }
   },
 
@@ -332,15 +322,7 @@ export const eventService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching event analytics:', error);
-      // Return demo analytics data
-      return mockDelay({
-        totalEvents: 6,
-        totalAttendees: 1250,
-        totalRevenue: 4500,
-        upcomingEvents: 4,
-        draftEvents: 2,
-        publishedEvents: 4
-      });
+      throw error; // Don't use fallback, let the caller handle the error
     }
   },
 

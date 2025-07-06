@@ -106,11 +106,26 @@ const ticketService = {
     return response.data;
   },
 
-  // Get event tickets (for organizers)
+  // Get event tickets (for organizers) - updated version
   getEventTickets: async (eventId) => {
-    const response = await api.get(`/tickets/event/${eventId}`);
-    return response.data;
-  }
+    try {
+      const response = await api.get(`/tickets/organizer/event-tickets?eventId=${eventId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch event tickets');
+    }
+  },
+
+  // Get all tickets for organizer's events
+  getOrganizerEventTickets: async (options = {}) => {
+    try {
+      const params = new URLSearchParams(options).toString();
+      const response = await api.get(`/tickets/organizer/event-tickets?${params}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch organizer tickets');
+    }
+  },
 };
 
 export { ticketService };
