@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { setUser, logout as logoutAction } from '../redux/userSlice';
 import { cleanupAuthData } from '../utils/authCleanup';
 import axios from 'axios';
@@ -13,6 +14,7 @@ const useAuth = () => {
   const [initialUser, setInitialUser] = useState(null);
   const dispatch = useDispatch();
   const currentUser = useSelector(state => state.user.user);
+  const navigate = useNavigate();
   
   const { 
     isAuthenticated, 
@@ -80,10 +82,10 @@ const useAuth = () => {
   }, [loginWithRedirect]);
 
   const logout = useCallback(() => {
-    // First, navigate to homepage
-    window.location.href = '/';
+    // First, navigate to homepage immediately
+    navigate('/', { replace: true });
     
-    // Then perform cleanup after a short delay to allow navigation
+    // Then perform logout after navigation completes
     setTimeout(() => {
       // Clear Redux state
       dispatch(logoutAction());
@@ -109,8 +111,8 @@ const useAuth = () => {
           returnTo: window.location.origin
         }
       });
-    }, 100); // Small delay to ensure navigation starts first
-  }, [dispatch, auth0Logout]);
+    }, 200); // Slightly longer delay to ensure navigation completes
+  }, [dispatch, auth0Logout, navigate]);
 
   return {
     isAuthenticated,
