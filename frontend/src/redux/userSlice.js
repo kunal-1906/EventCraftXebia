@@ -60,7 +60,12 @@ export const register = (userData) => async (dispatch) => {
 };
 
 export const logout = () => (dispatch) => {
+  // Clear localStorage first
   authService.logout();
+  // Clear localStorage for any other user-related data
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('auth0.is.authenticated');
+  // Then clear Redux state
   dispatch(clearUser());
 };
 

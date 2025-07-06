@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUser, logout as logoutAction } from '../redux/userSlice';
+import { cleanupAuthData } from '../utils/authCleanup';
 import axios from 'axios';
 
 /**
@@ -79,13 +80,36 @@ const useAuth = () => {
   }, [loginWithRedirect]);
 
   const logout = useCallback(() => {
-    dispatch(logoutAction());
-    delete axios.defaults.headers.common['Authorization'];
-    auth0Logout({ 
-      logoutParams: {
-        returnTo: window.location.origin
-      }
-    });
+    // First, navigate to homepage
+    window.location.href = '/';
+    
+    // Then perform cleanup after a short delay to allow navigation
+    setTimeout(() => {
+      // Clear Redux state
+      dispatch(logoutAction());
+      
+      // Clear localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('userRole');
+      
+      // Clear sessionStorage as well
+      sessionStorage.removeItem('auth_callback_handled');
+      sessionStorage.removeItem('auth_callback_time');
+      
+      // Clear axios auth header
+      delete axios.defaults.headers.common['Authorization'];
+      
+      // Clean up any Auth0 related stale data
+      cleanupAuthData();
+      
+      // Finally call Auth0 logout
+      auth0Logout({ 
+        logoutParams: {
+          returnTo: window.location.origin
+        }
+      });
+    }, 100); // Small delay to ensure navigation starts first
   }, [dispatch, auth0Logout]);
 
   return {
