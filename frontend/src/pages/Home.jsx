@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
@@ -17,7 +18,27 @@ import {
   Shield
 } from 'lucide-react';
 
+
 const Home = () => {
+  const [events, setEvents] = useState([]);  
+  const [loading, setLoading] = useState(true);
+const [error, setError] = useState(null);
+
+  useEffect(() => {
+  const fetchEvents = async () => {
+    try {
+      const response = await axios.get('/api/events/popular');
+      setEvents(response.data);
+    } catch (error) {
+      setError("Failed to fetch events.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchEvents();
+}, []);
+
   const user = useSelector((state) => state.user.user);
   
   // Determine dashboard link based on user role
@@ -51,32 +72,6 @@ const Home = () => {
     }
   };
 
-  const features = [
-    {
-      icon: Calendar,
-      title: "Smart Event Planning",
-      description: "Create and manage events with our intuitive planning tools and automated workflows.",
-      color: "from-blue-500 to-cyan-500"
-    },
-    {
-      icon: Users,
-      title: "Seamless Registration", 
-      description: "Easy registration process with automated confirmations and ticket management.",
-      color: "from-purple-500 to-pink-500"
-    },
-    {
-      icon: MapPin,
-      title: "Venue Management",
-      description: "Find and book venues with integrated maps and availability tracking.",
-      color: "from-green-500 to-teal-500"
-    },
-    {
-      icon: Star,
-      title: "Attendee Experience",
-      description: "Enhance attendee engagement with networking tools and interactive features.",
-      color: "from-yellow-500 to-orange-500"
-    }
-  ];
 
   const stats = [
     { number: "10K+", label: "Events Created", icon: Calendar },
@@ -111,6 +106,8 @@ const Home = () => {
       rating: 5
     }
   ];
+
+  
 
   return (
     <div className="min-h-screen bg-white">
@@ -284,48 +281,55 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-gradient-to-br from-secondary-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className="text-4xl font-bold text-secondary-900 mb-4">
-              Everything you need for successful events
-            </h2>
-            <p className="text-xl text-secondary-600 max-w-3xl mx-auto">
-              EventCraft provides a comprehensive platform with all the tools and features you need to create, manage, and execute memorable events.
-            </p>
-          </motion.div>
+     {/* Popular Events Section */}
+<section className="py-20 bg-gradient-to-br from-secondary-50 to-white">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <motion.div 
+      className="text-center mb-16"
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6 }}
+    >
+      <h2 className="text-4xl font-bold text-secondary-900 mb-4">
+        Popular Events Happening Now
+      </h2>
+      <p className="text-xl text-secondary-600 max-w-3xl mx-auto">
+        Discover trending events near you and join the action!
+      </p>
+    </motion.div>
 
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
-            variants={staggerContainer}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-          >
-            {features.map((feature, index) => (
-              <motion.div key={index} variants={fadeInUp}>
-                <Card 
-                  className="p-8 text-center hover-lift h-full"
-                  variant="elevated"
-                >
-                  <div className={`w-16 h-16 bg-gradient-to-r ${feature.color} rounded-2xl flex items-center justify-center mx-auto mb-6`}>
-                    <feature.icon className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-secondary-900 mb-4">{feature.title}</h3>
-                  <p className="text-secondary-600 leading-relaxed">{feature.description}</p>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
+    <motion.div 
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+      variants={staggerContainer}
+      initial="initial"
+      whileInView="animate"
+      viewport={{ once: true }}
+    >
+      {loading ? (
+  <p className="text-center text-secondary-500 col-span-full">Loading events...</p>
+) : error ? (
+  <p className="text-center text-red-500 col-span-full">{error}</p>
+) : events.length === 0 ? (
+  <p className="text-center text-secondary-500 col-span-full">No popular events available at the moment.</p>
+) : (
+  events.map((event, index) => (
+    <motion.div key={event.id} variants={fadeInUp}>
+      <Card className="p-0 overflow-hidden hover-lift h-full">
+        <img src={event.image} alt={event.title} className="w-full h-40 object-cover" />
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-secondary-900 mb-1">{event.title}</h3>
+          <p className="text-sm text-secondary-500 mb-2">{event.date} • {event.location}</p>
+          <p className="text-sm text-secondary-600">{event.description}</p>
         </div>
-      </section>
+      </Card>
+    </motion.div>
+  ))
+)}
+
+    </motion.div>
+  </div>
+</section>
 
       {/* Testimonials Section */}
       <section className="py-20 bg-white">
